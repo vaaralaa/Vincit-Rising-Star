@@ -109,8 +109,9 @@ def max_volume(trading_volumes, date_range):
 def max_profit(days_price,date_range):
     
     nr_of_days = len(date_range)
-    profits = []
+    print(nr_of_days)
     buy_sell_pairs = []
+    profits = []
     i = 0
 
     while i < nr_of_days-1:
@@ -118,14 +119,14 @@ def max_profit(days_price,date_range):
             i += 1
         if i == nr_of_days-1:
             break
-        buy = i
-        i += 1
-        while i < nr_of_days-1 and days_price[i] < days_price[i+1]:
-            i += 1
-        sell = i
+        local_min = i
+        sell = local_min + np.array(days_price[local_min:]).argmax()
+        buy = local_min + np.array(days_price[local_min:sell+1]).argmin()
         buy_sell = [buy,sell]
         buy_sell_pairs.append(buy_sell)
+        i = sell+1
     
+    print(buy_sell_pairs)
     if buy_sell_pairs == []:
         return [0,0],-1
     for pair in buy_sell_pairs:
