@@ -19,7 +19,7 @@ time = datetime.min.time()
 
 window = tk.Tk()
 window.title('Vincit Rising Star')
-window.geometry("400x400")
+window.geometry("450x350")
 window.columnconfigure(0,weight=1)
 window.columnconfigure(1,weight=1)
 
@@ -28,7 +28,7 @@ window.columnconfigure(1,weight=1)
 ids = ['bitcoin','ethereum']
 vs_currencies = ['eur']
 
-# Currency id
+# Currency id, dropdown menu
 c_id_label = tk.Label(text="Currency:")
 c_id_label.grid(column=0,row=0,sticky = tk.W)
 c_id = tk.StringVar(window)
@@ -36,7 +36,7 @@ c_id.set(ids[0]) # default value
 c_id_menu = tk.OptionMenu(window, c_id, *ids)
 c_id_menu.grid(column=1,row=0,sticky = tk.EW)
 
-# VS currency
+# VS currency, dropdown menu
 vs_c_label = tk.Label(text="VS Currency:")
 vs_c_label.grid(column=0,row=1,sticky = tk.W)
 vs_c = tk.StringVar(window)
@@ -44,16 +44,16 @@ vs_c.set(vs_currencies[0]) # default value
 vs_c_menu = tk.OptionMenu(window, vs_c, *vs_currencies)
 vs_c_menu.grid(column=1,row=1,sticky = tk.EW)
 
-# Date from
-df_label = tk.Label(text="DF:")
+# Date from, DateEntry
+df_label = tk.Label(text="From:")
 df_label.grid(column=0,row=2,sticky = tk.W)
 df = DateEntry(window, locale='en_FI', selectmode = 'day',
                year = week_before.year, month = week_before.month,
                day = week_before.day)
 df.grid(column=1,row=2,sticky = tk.EW)
 
-# Date to
-dt_label = tk.Label(text="DT:")
+# Date to, DateEntry
+dt_label = tk.Label(text="To:")
 dt_label.grid(column=0,row=3,sticky = tk.W)
 dt = DateEntry(window, locale='en_FI', selectmode = 'day',
                year = today.year, month = today.month,
@@ -89,32 +89,38 @@ mp.grid(column=0,row=10,columnspan = 2)
 
 
 def submit(event):
+    """
+    Gets the data, processes it and displays processed data on main window and
+    graph on new window
+    """
+    # get parameters from user
     id_val = c_id.get()
     vs_val = vs_c.get()
-    fr = date_to_timestamp(df.get_date(), time)
-    to = date_to_timestamp(dt.get_date(), time)
-    if fr > to:
-        messagebox.showerror("Date range error", "df must be lower than dt")
+    f = date_to_timestamp(df.get_date(), time)
+    t = date_to_timestamp(dt.get_date(), time)
+    if f > t:
+        messagebox.showerror("Date range error",
+                             "From must be earlier date than To!")
     else:
-        data, date_range = get_data(id_val,vs_val,fr,to)
+        # get data from CoinGeckoAPI
+        data, date_range = get_data(id_val,vs_val,f,t)
+        
+        # get longest downward trend and display results in window
         down = downward(data[:,0],len(date_range))
-        text_content = ""
+        dw_text = ""
         if down[1] > 0:
-            text_content = "In {}’s historical data from CoinGecko,\
+            dw_text = "In {}’s historical data from CoinGecko,\
 the price decreased {} days in a row for the inputs from {} to {}.".format(
 id_val,down[1],date_range[down[0]].strftime("%Y-%m-%d"),
                           date_range[down[0]+down[1]].strftime("%Y-%m-%d"))      
         else:
-            text_content = "In bitcoin’s historical data from CoinGecko,\
+            dw_text = "In bitcoin’s historical data from CoinGecko,\
 the price decreased {} days in a row.".format(down[1])
 
         dw.config(state='normal')
         dw.delete(1.0,tk.END)
-        dw.insert(tk.END,text_content)
+        dw.insert(tk.END,dw_text)
         dw.config(state='disabled')
-        new_window = tk.Toplevel(window)
-        new_window.title("Visual representation of the data")
-        plot(new_window, data[:,0], down,date_range)
         
         highest_volume = max_volume(data[:,1],date_range)
         hv_text = "Day with highest trading volume within date range is {} and\
@@ -133,15 +139,21 @@ and the amount of profit is {}€ from one coin.".format(
 date_range[pair[0]].strftime("%Y-%m-%d"),
 date_range[pair[1]].strftime("%Y-%m-%d"),profit)
         else:
-            "No possible profit, within the chosen date range one shouldn\'t\
-            buy nor sell."
+            mp_text = "No possible profit, within the chosen date range one \
+shouldn\'t buy nor sell."
         mp.config(state='normal')
         mp.delete(1.0,tk.END)
         mp.insert(tk.END,mp_text)
         mp.config(state='disabled')
         
+        new_window = tk.Toplevel(window)
+        new_window.title("Visual representation of the data")
+        plot(new_window, data[:,0], down,date_range,pair)
 
 def reset(event):
+    """
+    resets window's values
+    """
     c_id.set(ids[0])
     vs_c.set(vs_currencies[0])
     df.set_date(week_before)
